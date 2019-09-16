@@ -99,7 +99,6 @@ func (b *BuilderDefault) BuildExecute(operType string) (sqlStr string, args []in
 		b.IOrm.GetISession().GetIEngin().GetLogger().Error(err.Error())
 		return
 	}
-
 	switch operType {
 	case "insert":
 		sqlStr = fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", b.BuildTable(), insertkey, insertval)
@@ -129,6 +128,8 @@ func (b *BuilderDefault) BuildData(operType string) (string, string, string) {
 	ref := reflect.Indirect(reflect.ValueOf(data))
 
 	switch ref.Kind() {
+	case reflect.String:
+		return b.parseStringData(operType, []string{ data.(string) })
 	case reflect.Struct:
 		return b.parseData(operType, structEngin.New().SetExtraCols(b.IOrm.GetExtraCols()).StructContent2Map(data))
 	case reflect.Map:
@@ -136,6 +137,8 @@ func (b *BuilderDefault) BuildData(operType string) (string, string, string) {
 		return b.parseData(operType, tmp)
 	case reflect.Slice:
 		switch ref.Type().Elem().Kind() {
+		case reflect.String:
+			return b.parseStringData(operType, t.New(data).SliceString())
 		case reflect.Struct:
 			return b.parseData(operType, structEngin.New().SetExtraCols(b.IOrm.GetExtraCols()).StructContent2Map(data))
 		case reflect.Map:
@@ -219,6 +222,28 @@ func (b *BuilderDefault) BuildData2(operType string) (string, string, string) {
 	}
 
 	return strings.Join(dataObj, ","), strings.Join(dataFields, ","), strings.Join(dataValues, ",")
+}
+
+func (b *BuilderDefault) parseStringData(operType string, data []string) (string, string, string) {
+	if operType == "update" {
+		return strings.Join(data, ","), "", ""
+	}
+	var dataFields []string
+	var dataValues []string
+	for _, s := range data {
+		items := strings.Split(s, ",")
+		for _, item := range items {
+			fieldPairs := strings.Split(item, "=")
+			if len(fieldPairs) <= 1 {
+				continue
+			}
+			fieldName := fieldPairs[0]
+			fieldValue := fieldPairs[1]
+			dataFields = append(dataFields, fieldName)
+			dataValues = append(dataValues, fieldValue)
+		}
+	}
+	return "", strings.Join(dataFields, ","), strings.Join(dataValues, ",")
 }
 
 func (b *BuilderDefault) parseData(operType string, data []map[string]interface{}) (string, string, string) {
