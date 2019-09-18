@@ -413,12 +413,18 @@ func (b *BuilderDefault) parseWhere(ormApi IOrm) (string, error) {
 		case 1: // 二维数组或字符串
 			switch paramReal := params[0].(type) {
 			case string:
+				if paramReal == "" {
+					continue
+				}
 				where = append(where, condition+" ("+paramReal+")")
 			case map[string]interface{}: // 一维数组
 				var whereArr []string
 				for key, val := range paramReal {
 					whereArr = append(whereArr, key+"="+b.GetPlaceholder())
 					b.IOrm.SetBindValues(val)
+				}
+				if len(whereArr) == 0 {
+					continue
 				}
 				where = append(where, condition+" ("+strings.Join(whereArr, " and ")+")")
 			case [][]interface{}: // 二维数组
@@ -442,6 +448,9 @@ func (b *BuilderDefault) parseWhere(ormApi IOrm) (string, error) {
 						return "", errors.New("where data format is wrong")
 					}
 				}
+				if len(whereMore) == 0 {
+					continue
+				}
 				where = append(where, condition+" ("+strings.Join(whereMore, " and ")+")")
 			case func():
 				// 清空where,给嵌套的where让路,复用这个节点
@@ -454,6 +463,9 @@ func (b *BuilderDefault) parseWhere(ormApi IOrm) (string, error) {
 				if err != nil {
 					b.IOrm.GetISession().GetIEngin().GetLogger().Error(err.Error())
 					return "", err
+				}
+				if wherenested == "" {
+					continue
 				}
 				// 嵌套的where放入一个括号内
 				where = append(where, condition+" ("+wherenested+")")
