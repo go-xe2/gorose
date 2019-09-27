@@ -34,10 +34,6 @@ require github.com/x-goe/gorose
 ```
 > you should use it like `import "github.com/x-goe/gorose"`  
 
-- docker
-```bash
-docker run -it --rm ababy/gorose sh -c "go run main.go"
-```
 - go get  
 ```bash
 go get -u github.com/x-goe/gorose
