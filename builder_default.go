@@ -1,6 +1,7 @@
 package gorose
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gohouse/gocar/structEngin"
@@ -333,7 +334,7 @@ func (b *BuilderDefault) BuildJoin() (s string, err error) {
 
 func (b *BuilderDefault) BuildWhere() (where string, err error) {
 	var beforeParseWhere = b.IOrm.GetWhere()
-	where, err = b.parseWhere(b.IOrm)
+	where, err = b.parseWhere2(b.IOrm)
 	b.IOrm.SetWhere(beforeParseWhere)
 	return If(where == "", "", " WHERE "+where).(string), err
 }
@@ -382,10 +383,263 @@ func (b *BuilderDefault) BuildOffset() string {
 	return If(b.IOrm.GetOffset() == 0, "", " OFFSET "+strconv.Itoa(b.IOrm.GetOffset())).(string)
 }
 
+func (b *BuilderDefault) parseWhereInParams(value []interface{}) string {
+	var placeHolder []string
+	for _, v := range value {
+		placeHolder = append(placeHolder, b.GetPlaceholder())
+		b.IOrm.SetBindValues(v)
+	}
+	return strings.Join(placeHolder, ",")
+}
+
+func (b *BuilderDefault) parseSliceWhere(condition string, wheres []interface{}) (string, error) {
+	// 		[
+	// 			["age", ">", 1],
+	// 			["money": [">", 10]],
+	// 			["$or":
+	// 				[
+	// 					["name": "3232"],
+	// 					["name": "like", "sss"]
+	// 				]
+	// 			],
+	//			["$string": "status = 1"],
+	//			["status = 1"],
+	//			["type": ["$in": [2,3]]]
+	//			["classid": ["$not_in": [12,33] ]]
+	// 		]
+	fmt.Printf("******========>>>%v\n",wheres)
+	var results []string
+	for _, args := range wheres {
+		switch value := args.(type) {
+		case string:
+			results = append(results, value)
+			break
+		case []interface{}:
+			fmt.Printf("==========>%v", value)
+			fieldOrCondition := value[0].(string)
+			valueLen := len(value)
+
+			if valueLen == 1 {
+				// 只有一个参数
+				results = append(results, fieldOrCondition)
+				continue
+			}
+			if valueLen == 2 {
+				paramValue := value[1]
+				paramValueType := reflect.TypeOf(paramValue).Kind()
+
+				switch strings.ToLower(fieldOrCondition) {
+				case "and", "$and":
+					if paramValueType != reflect.Slice {
+						return "", errors.New("查询参数无效")
+					}
+					tmpWhere, err := b.parseSliceWhere("and", paramValue.([]interface{}))
+					if err != nil {
+						return "", err
+					}
+					if tmpWhere != "" {
+						results = append(results, tmpWhere)
+					}
+					break
+				case "or", "$or":
+					if paramValueType != reflect.Slice {
+						return "", errors.New("查询参数无效")
+					}
+					tmpWhere, err := b.parseSliceWhere("or", paramValue.([]interface{}))
+					if err != nil {
+						return "", err
+					}
+					if tmpWhere != "" {
+						results = append(results, tmpWhere)
+					}
+					break
+				case "$string":
+					if paramValueType != reflect.String {
+						return "", errors.New("查询参数无效")
+					}
+					results = append(results, paramValue.(string))
+					break
+				default:
+					if paramValueType == reflect.Slice {
+						arr := paramValue.([]interface{})
+						if oper, ok := arr[0].(string); !ok || len(arr) == 0 {
+							continue
+						} else {
+							results = append(results, fmt.Sprintf("%s %s %s", fieldOrCondition, oper, b.GetPlaceholder()))
+							b.SetBindValues(arr[1])
+						}
+					} else {
+						results = append(results, fieldOrCondition + " = " + b.GetPlaceholder())
+						b.SetBindValues(paramValue)
+					}
+				}
+			}
+			// ["name", "like", "sss"]
+			if valueLen == 3 {
+				oper := value[1].(string)
+				switch oper {
+				case "like", "$like":
+					results = append(results, fieldOrCondition+" like " + b.GetPlaceholder())
+					b.IOrm.SetBindValues(value[2])
+					continue
+				case ">", ">=", "<>", "<", "<=":
+					results = append(results, fieldOrCondition+oper + b.GetPlaceholder())
+					b.IOrm.SetBindValues(value[2])
+					continue
+				case "in", "$in", "not in", "$not_in":
+					oper1 := oper
+					if oper == "$in" {
+						oper1 = "in"
+					} else if oper == "$not_in" {
+						oper1 = "not in"
+					}
+					if arr, ok := value[2].([]interface{}); !ok {
+						return "", errors.New("查询参数无效")
+					} else {
+						s := b.parseWhereInParams(arr)
+						if s != "" {
+							results = append(results, fmt.Sprintf("%s %s %s", fieldOrCondition, oper1, s))
+						}
+					}
+					break
+				case "between", "not between":
+					if arr, ok := value[2].([]interface{}); !ok {
+						return "", errors.New("查询参数无效")
+					} else {
+						if len(arr) > 0 {
+							if len(arr) == 1 {
+								b.SetBindValues(arr[0])
+								b.SetBindValues(arr[0])
+							} else if len(arr) > 1 {
+								b.SetBindValues(arr[0])
+								b.SetBindValues(arr[1])
+							}
+							results = append(results, fieldOrCondition + " " + oper + " " + b.GetPlaceholder() + " and " + b.GetPlaceholder())
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+	return strings.Join(results, condition), nil
+}
+
+func (b *BuilderDefault) parseMapWhere(condition string, wheres map[string]interface{}) (string, error) {
+	return "", nil
+}
+
+func (b *BuilderDefault) parseWhere2(ormApi IOrm) (string, error) {
+	wheres := ormApi.GetWhere()
+
+	jsonByte, _ := json.Marshal(wheres)
+	fmt.Printf("=====>>>>>>>wheres:%v\n", string(jsonByte))
+	return "", nil
+	if wheres == nil {
+		return "", nil
+	}
+
+	var where []string
+
+	for _, args := range wheres {
+		// sql: age > 1 and money > 10 and (name = "3232" or name like "sss%") and status = 1 and type in(2,3) and classid not in(12,33)
+		// slice:
+		// [ "$and":
+		// 		[
+		// 			{"age": [">", 1]},
+		// 			{"money": [">", 10]},
+		// 			{"$or":
+		// 				[
+		// 					{"name": "3232"},
+		// 					{"name": ["like", "sss"]}
+		// 				]
+		// 			},
+		//			{"$string": "status = 1"},
+		//			"status = 1",
+		//			{"type": ["in": [2,3]]}
+		//			{"classid": ["in": [12,33]]}
+		// 		]
+		// ]
+		// struct:
+		// [
+		// 		"$and": {
+		// 			"age": [">", 1],
+		//			"money": [">", 10],
+		//			"$or": [
+		//						{ "name": "3232" },
+		//						{ "name": ["$like", "sss%"] },
+		//				   ]
+		//			"$string": "status = 1",
+		//			"type": ["$in": [2,3]] ,
+		//			"classid": ["$not_in": [12,33]
+		// 		}
+		// ]
+		var condition 	= args[0].(string)
+		var params 		= args[1]
+		switch value := params.(type) {
+		case string:
+			where = append(where, value)
+			break
+		case []interface{}:
+			arrLen := len(value)
+			if arrLen == 1 {
+				// {}
+				switch testValue := value[0].(type) {
+				case string:
+					where = append(where, testValue)
+					break
+				case []interface{}:
+					s, err := b.parseSliceWhere(condition, testValue)
+					if err != nil {
+						return "", err
+					}
+					where = append(where, "(" + s + ")")
+					break
+				case map[string]interface{}:
+					s, err := b.parseMapWhere(condition, testValue)
+					if err != nil {
+						return "", err
+					}
+					where = append(where, "(" + s + ")")
+					break
+				}
+			}
+			if arrLen == 2 {
+				// [ "name", "张三" ]
+				// [ "$and" :[ ["sex", 1], ["age", ">", 3]] ]
+
+			}
+			if arrLen == 3 {
+				// { "name", "like", "dd" }
+			}
+			s, err := b.parseSliceWhere(condition, value)
+			if err != nil {
+				return "", err
+			}
+			where = append(where, "(" + s + ")")
+			break
+		case map[string]interface{}:
+			s, err := b.parseMapWhere(condition, value)
+			if err != nil {
+				return "", err
+			}
+			where = append(where, "(" + s + ")")
+			break
+		}
+	}
+	return strings.Join(where," and "), nil
+}
+
 // parseWhere : parse where condition
 func (b *BuilderDefault) parseWhere(ormApi IOrm) (string, error) {
 	// 取出所有where
 	wheres := ormApi.GetWhere()
+	bytes, err := json.Marshal(wheres)
+	if err != nil {
+		return "", err
+	}
+	fmt.Printf("wheres:%s\n", string(bytes))
+
 	// where解析后存放每一项的容器
 	var where []string
 

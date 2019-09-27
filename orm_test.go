@@ -4,6 +4,9 @@ import (
 	"testing"
 )
 
+type O = map[string]interface{}
+type A = []interface{}
+
 func DB() IOrm {
 	return initDB().NewOrm()
 }
@@ -50,11 +53,31 @@ func TestOrm_BuildSql_where(t *testing.T) {
 	}
 
 	var db = DB()
-	a, b, err := db.Table(&u).Where("age", ">", 1).Where(func() {
-		db.Where("name", "like", "%fizz%").OrWhere(func() {
-			db.Where("age", ">", 10).Where("uid", ">", 2)
-		})
-	}).Limit(10).BuildSql()
+	a, b, err := db.Table(&u).Where([][]interface{}{{"age", "<>", 1}, {"age", "in", []int{0,1,2}}}).Limit(10).BuildSql()//.Where(func() {
+		//db.Where([][]interface{}{{"name", "like", "%fizz%"}}) //.OrWhere(func() {
+		//	db.Where("age", ">", 10).Where("uid", ">", 2)
+		//})
+	//}).Limit(10).BuildSql()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	t.Log(a, b)
+
+	db.Reset()
+	a, b, err = db.Table(&u).Where(A{
+			O{"age": A{"<>", 1}},
+			O{"age": A{"in", []int{0,1,2}}},
+			O{
+				"$or": A{
+					O{"name": "张三"},
+					O{"name": A{"like", "李%"}},
+				},
+			},
+		}).Limit(10).BuildSql()//.Where(func() {
+	//db.Where([][]interface{}{{"name", "like", "%fizz%"}}) //.OrWhere(func() {
+	//	db.Where("age", ">", 10).Where("uid", ">", 2)
+	//})
+	//}).Limit(10).BuildSql()
 	if err != nil {
 		t.Error(err.Error())
 	}
