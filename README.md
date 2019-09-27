@@ -1,6 +1,6 @@
 # GoRose ORM
-[![GoDoc](https://godoc.org/github.com/gohouse/gorose?status.svg)](https://godoc.org/github.com/gohouse/gorose)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gohouse/gorose)](https://goreportcard.com/report/github.com/gohouse/gorose)
+[![GoDoc](https://godoc.org/github.com/x-goe/gorose?status.svg)](https://godoc.org/github.com/x-goe/gorose)
+[![Go Report Card](https://goreportcard.com/badge/github.com/x-goe/gorose)](https://goreportcard.com/report/github.com/x-goe/gorose)
 [![GitHub release](https://img.shields.io/github/release/gohouse/gorose.svg)](https://github.com/gohouse/gorose/releases/latest)
 [![Gitter](https://badges.gitter.im/gohouse/gorose.svg)](https://gitter.im/gorose/wechat)
 ![GitHub](https://img.shields.io/github/license/gohouse/gorose?color=blue)
@@ -18,8 +18,8 @@
 ```
 
 ## translations  
-[English readme](https://github.com/gohouse/gorose/blob/master/README.md) |
-[中文 readme](https://github.com/gohouse/gorose/blob/master/README_cn.md) 
+[English readme](https://github.com/x-goe/gorose/blob/master/README.md) |
+[中文 readme](https://github.com/x-goe/gorose/blob/master/README_cn.md) 
 
 ## introduction
 gorose is a golang orm framework, which is Inspired by laravel's eloquent.  
@@ -30,25 +30,21 @@ The module diagram is as follows:
 ## installation
 - go.mod
 ```bash
-require github.com/gohouse/gorose/v2 v2.1.2
+require github.com/x-goe/gorose
 ```
-> you should use it like `import "github.com/gohouse/gorose/v2"`  
+> you should use it like `import "github.com/x-goe/gorose"`  
 
 - docker
 ```bash
 docker run -it --rm ababy/gorose sh -c "go run main.go"
 ```
-> docker image: [ababy/gorose](https://cloud.docker.com/u/ababy/repository/docker/ababy/gorose), The docker image contains the packages and runtime environment necessary for gorose, [view `Dockerfile`](https://github.com/docker-box/gorose/blob/master/master/golang/Dockerfile)   
-
 - go get  
 ```bash
-go get -u github.com/gohouse/gorose/v2
+go get -u github.com/x-goe/gorose
 ```
 
 ## document
 [2.x doc](https://www.kancloud.cn/fizz/gorose-2/1135835)  
-[1.x doc](https://www.kancloud.cn/fizz/gorose/769179)  
-[0.x doc](https://gohouse.github.io/gorose/dist/en/index.html)
 
 ## api preview
 ```go
