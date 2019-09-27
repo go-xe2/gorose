@@ -142,6 +142,61 @@ func (dba *Orm) Page(page int) IOrm {
 	return dba
 }
 
+// 字符串条件
+func (dba *Orm) whereString(arg string) IOrm {
+	if arg == "" {
+		return dba
+	}
+	item := map[string]interface{} {
+		"$string": arg,
+	}
+	dba.where = append(dba.where, []interface{}{ item })
+	return dba
+}
+
+// 两个参数
+func (dba *Orm) whereSlice2(fieldOrCondition string, values interface{}) IOrm {
+	testCondition := strings.ToLower(fieldOrCondition)
+	isCondition := testCondition == "$and" || testCondition == "$or"
+	valueType := reflect.TypeOf(values).Kind()
+	if isCondition && valueType != reflect.Slice && valueType != reflect.Map {
+		// 不是有效的查询条件，忽略掉
+		return dba
+	}
+	if !isCondition {
+		item := map[string]interface{} {}
+		if valueType == reflect.Slice {
+			arr := values.([]interface{})
+			switch len(arr) {
+			case 1:
+				item[fieldOrCondition] = []interface{}{"=", arr[0]}
+				break
+			case 2:
+				item[fieldOrCondition] = []interface{}{arr[1], arr[2]}
+			default:
+				// 无效参数忽略
+				return dba
+			}
+		} else if valueType == reflect.Map {
+			// 无效参数忽略
+			return dba
+		}
+		item[fieldOrCondition] = []interface{}{"=", values}
+		dba.where = append(dba.where, []interface{}{ item })
+	}
+	return dba
+}
+
+// 3个参数
+func (dba *Orm) whereSlice3(field string, compare string, values interface{}) IOrm {
+	return dba
+}
+
+// map条件
+func (dba *Orm) whereMap(args map[string]interface{}) IOrm {
+	return dba
+}
+
 // Where : query or execute where condition, the relation is and
 // 第一项为and/or，第二项为[]interface{}时，为带查询关系条件
 func (dba *Orm) Where(args ...interface{}) IOrm {
