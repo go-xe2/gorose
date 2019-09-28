@@ -1,15 +1,15 @@
-# x-goe/gorose orm
+# xorm orm
 
 ## 安装使用
 - go.mod
 ```bash
-require github.com/x-goe/gorose
+require github.com/go-xe2/xorm
 ```
-> 使用 `import "github.com/x-goe/gorose"`导入库 
+> 使用 `import "github.com/go-xe2/xorm"`导入库 
 
 - go get  
 ```bash
-go get -u github.com/x-goe/gorose
+go get -u github.com/go-xe2/xorm
 ```
 
 ## 该ORM由gohouse/gorose改版升级，原gorose文档请参数:
@@ -28,21 +28,21 @@ db.Table().Where().Delete()
 package main
 import (
 	"fmt"
-	"github.com/gohouse/gorose"
+	"github.com/go-xe2/xorm"
 	_ "github.com/mattn/go-sqlite3"
 )
 var err error
-var engin *gorose.Engin
+var engin *xorm.Engin
 func init() {
     // Global initialization and reuse of databases
     // The engin here needs to be saved globally, using either global variables or singletons
-    // Configuration & gorose. Config {} is a single database configuration
-    // If you configure a read-write separation cluster, use & gorose. ConfigCluster {}
-	engin, err = gorose.Open(&gorose.Config{Driver: "sqlite3", Dsn: "./db.sqlite"})
+    // Configuration & xorm. Config {} is a single database configuration
+    // If you configure a read-write separation cluster, use & xorm. ConfigCluster {}
+	engin, err = xorm.Open(&xorm.Config{Driver: "sqlite3", Dsn: "./db.sqlite"})
     // mysql demo, remeber import mysql driver of github.com/go-sql-driver/mysql
-	// engin, err = gorose.Open(&gorose.Config{Driver: "mysql", Dsn: "root:root@tcp(localhost:3306)/test?charset=utf8&parseTime=true"})
+	// engin, err = xorm.Open(&xorm.Config{Driver: "mysql", Dsn: "root:root@tcp(localhost:3306)/test?charset=utf8&parseTime=true"})
 }
-func DB() gorose.IOrm {
+func DB() xorm.IOrm {
 	return engin.NewOrm()
 }
 func main() {
@@ -80,23 +80,23 @@ func main() {
 
 ## 配置示例:
 ```go
-var configSimple = &gorose.Config{
+var configSimple = &xorm.Config{
 	Driver: "sqlite3", 
 	Dsn: "./db.sqlite",
 }
 ```
 配置:
 ```go
-var config = &gorose.ConfigCluster{
-	Master:       []&gorose.Config{}{configSimple}
-    Slave:        []&gorose.Config{}{configSimple}
+var config = &xorm.ConfigCluster{
+	Master:       []&xorm.Config{}{configSimple}
+    Slave:        []&xorm.Config{}{configSimple}
     Prefix:       "pre_",
     Driver:       "sqlite3",
 }
 ```
 初始化:
 ```go
-var engin *gorose.Engin
+var engin *xorm.Engin
 engin, err := Open(config)
 
 if err != nil {
@@ -114,16 +114,16 @@ CREATE TABLE "users" (
 	 "age" integer NOT NULL
 );
 
-INSERT INTO "users" VALUES (1, 'gorose', 18);
-INSERT INTO "users" VALUES (2, 'goroom', 18);
+INSERT INTO "users" VALUES (1, 'xe222', 18);
+INSERT INTO "users" VALUES (2, 'xe2', 18);
 INSERT INTO "users" VALUES (3, 'fizzday', 18);
 ```
 定义实体:
 ```go
 type Users struct {
-	Uid  int    `gorose:"uid"`
-	Name string `gorose:"name"`
-	Age  int    `gorose:"age"`
+	Uid  int    `orm:"uid"`
+	Name string `orm:"name"`
+	Age  int    `orm:"age"`
 }
 // 实体对应数据库表名
 func (u *Users) TableName() string {
@@ -134,8 +134,8 @@ func (u *Users) TableName() string {
 ```go
 // Here is the structure object to be bound
 // If you don't define a structure, you can use map, map example directly
-// var u = gorose.Data{}
-// var u = gorose.Map{}  Both are possible.
+// var u = xorm.Data{}
+// var u = xorm.Map{}  Both are possible.
 var u Users
 session := engin.NewSession()
 // Here Bind () is used to store results. If you use NewOrm () initialization, you can use NewOrm (). Table (). Query () directly.
@@ -146,8 +146,8 @@ fmt.Println(session.LastSql())
 ```
 原生sql删改查:
 ```go
-session.Execute("insert into users(name,age) values(?,?)(?,?)", "gorose",18,"fizzday",19)
-session.Execute("update users set name=? where uid=?","gorose",1)
+session.Execute("insert into users(name,age) values(?,?)(?,?)", "xorm",18,"fizzday",19)
+session.Execute("update users set name=? where uid=?","xorm",1)
 session.Execute("delete from users where uid=?", 1)
 ```
 
@@ -162,13 +162,13 @@ err := db.Table(&u).Fields("name").AddFields("uid","age").Distinct().Where("uid"
 
 - 2. 使用map
 ```go
-type user gorose.Map
+type user xorm.Map
 // Or the following type definitions can be parsed properly
 type user2 map[string]interface{}
 type users3 []user
 type users4 []map[string]string
-type users5 []gorose.Map
-type users6 []gorose.Data
+type users5 []xorm.Map
+type users6 []xorm.Data
 ```
 - 3、定义实体
 ```go
@@ -179,9 +179,9 @@ db.Table(&users4).Limit(5).Select()
 - 4. 删除改查 
 ```go
 db.Table(&user2).Limit(10.Select()
-db.Table(&user2).Where("uid", 1).Data(gorose.Data{"name","gorose"}).Update()
-db.Table(&user2).Data(gorose.Data{"name","gorose33"}).Insert()
-db.Table(&user2).Data([]gorose.Data{{"name","gorose33"},"name","gorose44"}).Insert()
+db.Table(&user2).Where("uid", 1).Data(xorm.Data{"name","xorm"}).Update()
+db.Table(&user2).Data(xorm.Data{"name","xe2"}).Insert()
+db.Table(&user2).Data([]xorm.Data{{"name","xe23"},"name","dddd"}).Insert()
 db.Table(&user2).Where("uid", 1).Delete()
 ```
 
@@ -195,8 +195,8 @@ CREATE TABLE "users" (
 	 "age" integer NOT NULL
 );
 
-INSERT INTO "users" VALUES (1, 'gorose', 18);
-INSERT INTO "users" VALUES (2, 'goroom', 18);
+INSERT INTO "users" VALUES (1, 'txt', 18);
+INSERT INTO "users" VALUES (2, 'ytx2', 18);
 INSERT INTO "users" VALUES (3, 'fizzday', 18);
 ```
 Actual Code
@@ -205,15 +205,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/x-goe/gorose"
+	"github.com/go-xe2/xorm"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Users struct {
-    Uid int64 `gorose:"uid"`
-    Name string `gorose:"name"`
-    Age int64 `gorose:"age"`
-    Xxx interface{} `gorose:"-"` // This field is ignored in ORM
+    Uid int64 `orm:"uid"`
+    Name string `orm:"name"`
+    Age int64 `orm:"age"`
+    Xxx interface{} `orm:"-"` // This field is ignored in ORM
 }
 
 func (u *Users) TableName() string {
@@ -221,16 +221,16 @@ func (u *Users) TableName() string {
 }
 
 var err error
-var engin *gorose.Engin
+var engin *xorm.Engin
 
 func init() {
     // Global initialization and reuse of databases
     // The engin here needs to be saved globally, using either global variables or singletons
-    // Configuration & gorose. Config {} is a single database configuration
-    // If you configure a read-write separation cluster, use & gorose. ConfigCluster {}
-	engin, err = gorose.Open(&gorose.Config{Driver: "sqlite3", Dsn: "./db.sqlite"})
+    // Configuration & xorm. Config {} is a single database configuration
+    // If you configure a read-write separation cluster, use & xorm. ConfigCluster {}
+	engin, err = xorm.Open(&xorm.Config{Driver: "sqlite3", Dsn: "./db.sqlite"})
 }
-func DB() gorose.IOrm {
+func DB() xorm.IOrm {
 	return engin.NewOrm()
 }
 func main() {
@@ -292,8 +292,8 @@ func main() {
 	// map[id:4 name:fizzday]
 	// map[id:5 name:fizz3]
 	// map[id:6 name:gohouse]
-	[map[id:3 name:gorose] map[name:fizzday id:4]]
-	[map[id:5 name:fizz3] map[id:6 name:gohouse]]
+	[map[id:3 name:ytx22] map[name:ssss id:4]]
+	[map[id:5 name:tttt] map[id:6 name:xe2]]
 	```
     
 - Loop Data fragmentation, mass data batch processing (from scratch)   
@@ -315,7 +315,7 @@ func main() {
     由gohouse/gorose 改版发布
 
 ## 更新说明
-### 由 github.com/gohouse/gorose/v2 改版升级为github.com/x-goe/gorose v1.0.0
+### 由 github.com/gohouse/gorose/v2 改版升级为github.com/go-xe2/xorm v1.0.0
 - db.Table("tablename") 时自动清空where条件及join关联，在同一会话中不需要主动调用db.ResetWhere或db.Reset()方法
 - db.Where() 传入nil或宽数组时自动忽略该条件
 - db.Where() 可以传入0到3个参数，支持如下形式：

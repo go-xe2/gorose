@@ -1,8 +1,8 @@
-package gorose
+package xorm
 
 import (
 	"fmt"
-	"github.com/x-goe/gorose/sqlw"
+	"github.com/go-xe2/xorm/sqlw"
 	"strings"
 )
 

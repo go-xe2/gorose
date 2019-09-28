@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 import (
 	"github.com/gohouse/gocar/varBindValue"

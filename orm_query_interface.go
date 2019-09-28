@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 type IOrmQuery interface {
 	// 获取数据, 依据传入的绑定对象, 选择查询一条或多条数据并绑定到传入对象上

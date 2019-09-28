@@ -1,11 +1,11 @@
-package gorose
+package xorm
 
 import (
 	"errors"
 	"fmt"
+	"github.com/go-xe2/xorm/sqlw"
 	"github.com/gohouse/gocar/structEngin"
 	"github.com/gohouse/t"
-	"github.com/x-goe/gorose/sqlw"
 	"reflect"
 	"strconv"
 	"strings"
@@ -160,7 +160,7 @@ func (b *BuilderDefault) BuildData2(operType string) (string, string, string) {
 	switch data.(type) {
 	case string:
 		dataObj = append(dataObj, data.(string))
-	case []map[string]interface{}, []Data: // insert multi datas ([]map[string]interface{})
+	case []map[string]interface{}: // insert multi datas ([]map[string]interface{})
 		sliceData := t.New(data).Slice()
 		for key, _ := range sliceData[0].MapString() {
 			if inArray(key, dataFields) == false {
@@ -180,7 +180,7 @@ func (b *BuilderDefault) BuildData2(operType string) (string, string, string) {
 			}
 			dataValues = append(dataValues, "("+strings.Join(dataValuesSub, ",")+")")
 		}
-	case map[string]interface{}, Data: // update or insert (map[string]interface{})
+	case map[string]interface{}: // update or insert (map[string]interface{})
 		var dataValuesSub []string
 		for key, val := range t.New(data).MapString() {
 			if operType == "insert" {

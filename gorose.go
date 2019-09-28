@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 const GOROSE_IMG = `
                                                                             

@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 type Config struct {
 	Driver string // 驱动: mysql/sqlite3/oracle/mssql/postgres/clickhouse, 如果集群配置了驱动, 这里可以省略

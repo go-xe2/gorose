@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 type IBuilder interface {
 	BuildQuery(orm IOrm) (sqlStr string, args []interface{}, err error)

@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 type BuilderMysql struct {
 	//IOrm

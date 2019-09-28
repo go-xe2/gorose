@@ -1,4 +1,4 @@
-package gorose
+package xorm
 
 import (
 	"errors"
@@ -7,8 +7,8 @@ import (
 	"reflect"
 )
 
-type Map t.MapString
-type Data map[string]interface{}
+type Map = t.MapString			   // 别名
+type Data = map[string]interface{} // 别名
 
 type BindType int
 
