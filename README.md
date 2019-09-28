@@ -377,18 +377,7 @@ func main() {
             },
     }
     
-    db.Where([]interface{}{
-        []interface{}{"age", ">", 30 },
-        []interface{}{"weight", "between", [45, 80] },
-        []interface{}{"name", "like", "张%"},
-        []interface{}{"sex", "in", [1,2]},
-        []interface{}{"$or",
-            []interface{}{
-                []interface{}{"audit", 1},
-                []interface{}{"status", ">", 2 },
-            },
-        }
-    })
+    db.Where(where)
     
     // sql:
     // where age > 30 and weight between (45 and 80) and name like '张%'
