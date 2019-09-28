@@ -1,7 +1,7 @@
 package sqlw
 
 import (
-	"fmt"
+	"github.com/gohouse/t"
 	"reflect"
 	"strings"
 )
@@ -48,11 +48,23 @@ func whereCondition(condition string, args []interface{}) map[string]interface{}
 			results = append(results, map[string]interface{}{"$string": arg.(string)})
 			break
 		case reflect.Map:
-			m, ok := arg.(map[string]interface{})
-			if !ok {
+			m := t.New(arg).MapStringInterface()
+			if m == nil || len(m) == 0 {
 				continue
 			}
-			results = append(results, m)
+			if len(m) > 1 {
+				if mItems := whereMap(m); mItems != nil {
+					results = append(results, map[string]interface{}{ condition: mItems })
+				}
+				continue
+			}
+			// 只有1个字段
+			for fd, v := range m {
+				if whereItem := whereP2(fd, v); whereItem != nil {
+					results = append(results, whereItem)
+				}
+			}
+			break
 		case reflect.Slice:
 			arr := arg.([]interface{})
 			arrLen := len(arr)
@@ -105,12 +117,12 @@ func whereP1(express interface{}) interface{} {
 		}
 		break
 	case reflect.Slice:
-		arr, ok := express.([]interface{})
-		if ok {
-			return whereCondition("$and", arr)
-		}
 		arr1, ok := express.([][]interface{})
 		if !ok {
+			arr := t.New(express).SliceInterface()
+			if arr != nil {
+				return whereCondition("$and", arr)
+			}
 			return nil
 		}
 		var results []interface{}
@@ -157,8 +169,6 @@ func whereP2(fieldOrCondition string, value interface{}) interface{} {
 	if isCondition && vType != reflect.Slice && vType != reflect.Map {
 		return nil
 	}
-	fmt.Printf("condition:%v,value:%v\n", fieldOrCondition, value)
-
 	if !isCondition {
 		if vType == reflect.Slice {
 			arr := value.([]interface{})
@@ -178,6 +188,10 @@ func whereP2(fieldOrCondition string, value interface{}) interface{} {
 			}
 			return nil
 		} else if vType == reflect.Map {
+			v := whereMap(t.New(value).MapStringInterface())
+			if v != nil {
+				return map[string]interface{}{fieldOrCondition: v }
+			}
 			return nil
 		}
 		return map[string]interface{}{fieldOrCondition: []interface{}{"=", value}}
@@ -209,34 +223,46 @@ func whereMap(express map[string]interface{}) []interface{} {
 		if strings.ToLower(fd) == "$condition" {
 			continue
 		}
-		if fd == "$string" {
+		vType := reflect.TypeOf(v).Kind()
+		switch fd {
+		case "$string":
 			results = append(results, map[string]interface{}{fd: v })
 			continue
-		}
-		vType := reflect.TypeOf(v).Kind()
-		switch vType {
-		case reflect.Slice:
-			arr, ok := v.([]interface{})
-			if !ok {
+		case "$or", "$and":
+			if vType != reflect.Slice && vType != reflect.Map {
 				continue
 			}
-			arrLen := len(arr)
-			if arrLen == 1 {
-				if v := whereP1(arr[0]); v != nil {
-					results = append(results, v)
+			if vType == reflect.Slice {
+				arr := t.New(v).SliceInterface()
+				if vItem := whereCondition(fd, arr); vItem != nil {
+					results = append(results, map[string]interface{}{fd: vItem })
 				}
-			} else if arrLen > 1 {
-				if v := whereSliceValue(fd, arr); v != nil {
-					results = append(results, v)
+				continue
+			}
+			if vType == reflect.Map {
+				m := t.New(v).MapStringInterface()
+				if mItems := whereMap(m); mItems != nil {
+					results = append(results, map[string]interface{}{fd: mItems})
 				}
 			}
 			break
+		}
+		switch vType {
+		case reflect.Slice:
+			arr := t.New(v).SliceInterface()
+			if arr == nil {
+				continue
+			}
+			if v := whereSliceValue(fd, arr); v != nil {
+				results = append(results, v)
+			}
+			break
 		case reflect.Map:
-			m1, ok := v.(map[string]interface{})
-			if ok {
+			m1 := t.New(v).MapStringInterface()
+			if m1 != nil {
 				if v1 := whereMap(m1); v1 != nil {
 					results = append(results, map[string]interface{}{
-						fd: v,
+						fd: v1,
 					})
 				}
 			}
@@ -247,14 +273,10 @@ func whereMap(express map[string]interface{}) []interface{} {
 				results = append(results, map[string]interface{}{ "$string": s })
 			}
 			break
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint,
-				reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Bool, reflect.Float32,
-				reflect.Float64, reflect.String:
-					fmt.Printf("real value:%v\n", v)
-			results = append(results, map[string]interface{}{fd:[]interface{}{ "=", v }})
+		case reflect.Func:
 			break
-		case reflect.Uintptr:
-			results = append(results, map[string]interface{}{fd:[]interface{}{ "=", *v.(*uint) }})
+		default:
+			results = append(results, map[string]interface{}{fd:[]interface{}{ "=", v }})
 			break
 		}
 	}

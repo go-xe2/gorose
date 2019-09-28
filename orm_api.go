@@ -3,7 +3,7 @@ package gorose
 type OrmApi struct {
 	table           string
 	fields          []string
-	where           [][]interface{}
+	where           []interface{}
 	order           string
 	limit           int
 	offset          int
@@ -26,11 +26,11 @@ func (o *Orm) GetFields() []string {
 	return o.fields
 }
 
-func (o *Orm) SetWhere(arg [][]interface{}) {
+func (o *Orm) SetWhere(arg []interface{}) {
 	o.where = arg
 }
 
-func (o *Orm) GetWhere() [][]interface{} {
+func (o *Orm) GetWhere() []interface{} {
 	return o.where
 }
 

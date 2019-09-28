@@ -48,7 +48,7 @@ type IOrm interface {
 	//Truncate()
 	GetDriver() string
 	//GetIBinder() IBinder
-	SetBindValues(v interface{})
+	SetBindValues(v ...interface{})
 	GetBindValues() []interface{}
 	ClearBindValues()
 	Transaction(closers ...func(db IOrm) error) (err error)

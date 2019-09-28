@@ -3,8 +3,8 @@ package gorose
 type IOrmApi interface {
 	GetTable() string
 	GetFields() []string
-	SetWhere(arg [][]interface{})
-	GetWhere() [][]interface{}
+	SetWhere(arg []interface{})
+	GetWhere() []interface{}
 	GetOrder() string
 	GetLimit() int
 	GetOffset() int

@@ -2,8 +2,7 @@ package gorose
 
 import (
 	"fmt"
-	"github.com/gohouse/t"
-	"reflect"
+	"github.com/x-goe/gorose/sqlw"
 	"strings"
 )
 
@@ -40,8 +39,8 @@ func (dba *Orm) ResetExtraCols() IOrm {
 	return dba
 }
 
-func (dba *Orm) SetBindValues(v interface{}) {
-	dba.bindValues = append(dba.bindValues, v)
+func (dba *Orm) SetBindValues(v ...interface{}) {
+	dba.bindValues = append(dba.bindValues, v...)
 }
 
 func (dba *Orm) ClearBindValues() {
@@ -67,6 +66,9 @@ func (dba *Orm) GetISession() ISession {
 // Fields : select fields
 func (dba *Orm) Table(tab interface{}) IOrm {
 	dba.GetISession().Bind(tab)
+	// 重新查询时，应该清除原条件
+	dba.ResetWhere()
+	dba.join = [][]interface{}{}
 	//dba.table = dba.GetISession().GetTableName()
 	return dba
 }
@@ -142,174 +144,29 @@ func (dba *Orm) Page(page int) IOrm {
 	return dba
 }
 
-// 字符串条件
-func (dba *Orm) whereString(arg string) IOrm {
-	if arg == "" {
-		return dba
-	}
-	item := map[string]interface{} {
-		"$string": arg,
-	}
-	dba.where = append(dba.where, []interface{}{ item })
-	return dba
-}
 
-// 两个参数
-func (dba *Orm) whereSlice2(fieldOrCondition string, values interface{}) IOrm {
-	testCondition := strings.ToLower(fieldOrCondition)
-	isCondition := testCondition == "$and" || testCondition == "$or"
-	valueType := reflect.TypeOf(values).Kind()
-	if isCondition && valueType != reflect.Slice && valueType != reflect.Map {
-		// 不是有效的查询条件，忽略掉
-		return dba
-	}
-	if !isCondition {
-		item := map[string]interface{} {}
-		if valueType == reflect.Slice {
-			arr := values.([]interface{})
-			switch len(arr) {
-			case 1:
-				item[fieldOrCondition] = []interface{}{"=", arr[0]}
-				break
-			case 2:
-				item[fieldOrCondition] = []interface{}{arr[1], arr[2]}
-			default:
-				// 无效参数忽略
-				return dba
-			}
-		} else if valueType == reflect.Map {
-			// 无效参数忽略
-			return dba
-		}
-		item[fieldOrCondition] = []interface{}{"=", values}
-		dba.where = append(dba.where, []interface{}{ item })
-	}
-	return dba
-}
-
-// 3个参数
-func (dba *Orm) whereSlice3(field string, compare string, values interface{}) IOrm {
-	return dba
-}
-
-// map条件
-func (dba *Orm) whereMap(args map[string]interface{}) IOrm {
-	return dba
-}
-
-// Where : query or execute where condition, the relation is and
-// 第一项为and/or，第二项为[]interface{}时，为带查询关系条件
+// where 查询条件
+// @param args 支持0-3个参数
+// 1个时为:slice或map
+// 2个时为:参数1：$and|$or|字段名, 参数2: slice|slice|[real value或slice]
+// 3个时为:参数1: 字段名， 参数2: >,<,>=,<=, <>, in, not in, between, like 等待关系连接符, 参数3为条件值
 func (dba *Orm) Where(args ...interface{}) IOrm {
-	// 如果只传入一个参数, 则可能是字符串、一维对象、二维数组
-	// 重新组合为长度为3的数组, 第一项为关系(and/or), 第二项为具体传入的参数 []interface{}
-	if args == nil {
-		return dba
+	where := sqlw.CheckWhere(args...)
+	if where != nil {
+		dba.where = append(dba.where, where...)
 	}
-	argLen := len(args)
-	switch argLen {
-	case 3:
-		// ["name", "like", "s%"]
-		whereItem := map[string]interface{} {}
-		fdName, ok := args[0].(string)
-		if !ok {
-			panic("3个参数时第1个参数为字段名称")
-		}
-		relation, ok := args[1].(string)
-		if !ok {
-			panic("3个参数时第2个参数为关系符")
-		}
-		whereItem[fdName] = []interface{}{relation, args[2]}
-		dba.where = append(dba.where, []interface{}{ "$and", []interface{}{ whereItem } })
-		break
-	case 2:
-		s, ok := args[0].(string)
-		if !ok {
-			panic("2个参数时第1个参数为字段名或$and|$or关系词")
-		}
-		if strings.ToLower(s) == "$and" || strings.ToLower(s) == "$or" {
-			arr, ok := args[1].([]interface{})
-			if !ok {
-				panic("$and或$or时第2个参数必须为slice")
-			}
-			dba.where = append(dba.where, []interface{}{ strings.ToLower(s), arr })
-		}
-		break
-	case 1:
-		arrType := reflect.TypeOf(args[0]).Kind()
-		switch arrType {
-		case reflect.String:
-			dba.where = append(dba.where, []interface{}{ "$and", map[string]interface{}{
-				"$string": args[0].(string),
-			}})
-			break
-		case reflect.Slice:
-			// slice
-			var whereItems []interface{}
-			value := args[0].([][]interface{})
-			for _, arr := range value {
-				arrLen := len(arr)
-				switch arrLen {
-				case 3:
-					fdName := t.New(arr[0]).String()
-					relation := t.New(arr[1]).String()
-					item := map[string]interface{}{}
-					item[fdName] = []interface{}{relation, arr[2]}
-					whereItems = append(whereItems, item)
-					break
-				case 2:
-					item := map[string]interface{}{}
-					item[arr[0].(string)] = arr[1]
-					whereItems = append(whereItems, item)
-					break
-				case 1:
-					break
-				}
-			}
-			dba.Where("$and", whereItems)
-			break
-		case reflect.Map:
-			var items []interface{}
-			value := args[0].(map[string]interface{})
-			for key, v := range value {
-				item := map[string]interface{}{}
-				item[key] = v
-				items = append(items, item)
-			}
-			dba.where = append(dba.where, []interface{}{"$and", items})
-			break
-		}
-		break
-	}
-	//
-	//if len(args) == 2 {
-	//	condition := ""
-	//	argType := reflect.TypeOf(args[1]).Kind()
-	//	if s, ok := args[0].(string); ok {
-	//		condition = s
-	//	}
-	//	if (condition == "$and" || condition == "$or") && argType == reflect.Slice {
-	//		express := args[1].([]interface{})
-	//		w := []interface{}{If(condition == "$and", "and", "or"), express}
-	//		dba.where = append(dba.where, w)
-	//		return dba
-	//	}
-	//}
-	//w := []interface{}{"$and", args}
-	//
-	//dba.where = append(dba.where, w)
-
 	return dba
 }
 
-// Where : query or execute where condition, the relation is and
+// 使用or拼装where条件
 func (dba *Orm) OrWhere(args ...interface{}) IOrm {
-	// 如果只传入一个参数, 则可能是字符串、一维对象、二维数组
-
-	// 重新组合为长度为3的数组, 第一项为关系(and/or), 第二项为具体传入的参数 []interface{}
-	w := []interface{}{"$or", args}
-
-	dba.where = append(dba.where, w)
-
+	if len(args) == 0 {
+		return dba
+	}
+	where := sqlw.CheckWhere(args...)
+	if where != nil {
+		dba.where = append(dba.where, map[string]interface{}{"$or": where})
+	}
 	return dba
 }
 
@@ -394,7 +251,7 @@ func (dba *Orm) Reset() IOrm {
 
 // ResetWhere
 func (dba *Orm) ResetWhere() IOrm {
-	dba.where = [][]interface{}{}
+	dba.where = []interface{}{}
 	return dba
 }
 

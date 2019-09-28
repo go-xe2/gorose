@@ -1,48 +1,21 @@
-# GoRose ORM
-[![GoDoc](https://godoc.org/github.com/x-goe/gorose?status.svg)](https://godoc.org/github.com/x-goe/gorose)
-[![Go Report Card](https://goreportcard.com/badge/github.com/x-goe/gorose)](https://goreportcard.com/report/github.com/x-goe/gorose)
-[![GitHub release](https://img.shields.io/github/release/gohouse/gorose.svg)](https://github.com/gohouse/gorose/releases/latest)
-[![Gitter](https://badges.gitter.im/gohouse/gorose.svg)](https://gitter.im/gorose/wechat)
-![GitHub](https://img.shields.io/github/license/gohouse/gorose?color=blue)
-![GitHub All Releases](https://img.shields.io/github/downloads/gohouse/gorose/total?color=blue)
-<a target="_blank" href="https://jq.qq.com/?_wv=1027&k=5JJOG9E">
-<img border="0" src="http://pub.idqqimg.com/wpa/images/group.png" alt="gorose-orm" title="gorose-orm"></a>
+# x-goe/gorose orm
 
-```
-  _______   ______   .______        ______        _______. _______ 
- /  _____| /  __  \  |   _  \      /  __  \      /       ||   ____|
-|  |  __  |  |  |  | |  |_)  |    |  |  |  |    |   (----`|  |__   
-|  | |_ | |  |  |  | |      /     |  |  |  |     \   \    |   __|  
-|  |__| | |  `--'  | |  |\  \----.|  `--'  | .----)   |   |  |____ 
- \______|  \______/  | _| `._____| \______/  |_______/    |_______|
-```
-
-## translations  
-[English readme](https://github.com/x-goe/gorose/blob/master/README.md) |
-[中文 readme](https://github.com/x-goe/gorose/blob/master/README_cn.md) 
-
-## introduction
-gorose is a golang orm framework, which is Inspired by laravel's eloquent.  
-Gorose 2.0 adopts modular architecture, communicates through the API of interface, and strictly relies on the lower layer. Each module can be disassembled, and even can be customized to its preferred appearance.  
-The module diagram is as follows:   
-![gorose.2.0.jpg](https://i.loli.net/2019/08/06/7R2GlbwUiFKOrNP.jpg)
-
-## installation
+## 安装使用
 - go.mod
 ```bash
 require github.com/x-goe/gorose
 ```
-> you should use it like `import "github.com/x-goe/gorose"`  
+> 使用 `import "github.com/x-goe/gorose"`导入库 
 
 - go get  
 ```bash
 go get -u github.com/x-goe/gorose
 ```
 
-## document
+## 该ORM由gohouse/gorose改版升级，原gorose文档请参数:
 [2.x doc](https://www.kancloud.cn/fizz/gorose-2/1135835)  
 
-## api preview
+## api预览
 ```go
 db.Table().Fields().Distinct().Where().GroupBy().Having().OrderBy().Limit().Offset().Select()
 db.Table().Data().Insert()
@@ -50,7 +23,7 @@ db.Table().Data().Where().Update()
 db.Table().Where().Delete()
 ```
 
-## simple usage example
+## 使用示例：
 ```go
 package main
 import (
@@ -88,24 +61,31 @@ func main() {
     res2, _ := DB().Table("users").Get()
     // res2's type is []map[string]interface{}
     fmt.Println(res2)
+    
+    where := []interface{}{
+         []interface{}{"age", ">", 30 },
+         []interface{}{"weight", "between", []int{45, 80} },
+         []interface{}{"name", "like", "张%"},
+         []interface{}{"sex", "in", []int{1,2}},
+         []interface{}{"$or",
+             []interface{}{
+                 []interface{}{"audit", 1},
+                 []interface{}{"status", ">", 2 },
+             },
+    }
+    res3, _ := DB().Table("test").Where(where).Get()
+    fmt.Println(res3)
 }
 ```
 
-## usage advise
-Gorose provides data object binding (map, struct), while supporting string table names and map data return. It provides great flexibility.
-
-It is suggested that data binding should be used as a priority to complete query operation, so that the type of data source can be controlled.
-Gorose provides default `gorose. Map'and `gorose. Data' types to facilitate initialization of bindings and data
-
-## Configuration and link initialization
-Simple configuration
+## 配置示例:
 ```go
 var configSimple = &gorose.Config{
 	Driver: "sqlite3", 
 	Dsn: "./db.sqlite",
 }
 ```
-More configurations, you can configure the cluster, or even configure different databases in a cluster at the same time. The database will randomly select the cluster database to complete the corresponding reading and writing operations, in which master is the writing database, slave is the reading database, you need to do master-slave replication, here only responsible for reading and writing.
+配置:
 ```go
 var config = &gorose.ConfigCluster{
 	Master:       []&gorose.Config{}{configSimple}
@@ -114,7 +94,7 @@ var config = &gorose.ConfigCluster{
     Driver:       "sqlite3",
 }
 ```
-Initial usage
+初始化:
 ```go
 var engin *gorose.Engin
 engin, err := Open(config)
@@ -125,7 +105,7 @@ if err != nil {
 ```
 
 ## Native SQL operation (add, delete, check), session usage
-Create user tables of `users`
+创建用户表: `users`
 ```sql
 DROP TABLE IF EXISTS "users";
 CREATE TABLE "users" (
@@ -138,19 +118,19 @@ INSERT INTO "users" VALUES (1, 'gorose', 18);
 INSERT INTO "users" VALUES (2, 'goroom', 18);
 INSERT INTO "users" VALUES (3, 'fizzday', 18);
 ```
-define table struct
+定义实体:
 ```go
 type Users struct {
 	Uid  int    `gorose:"uid"`
 	Name string `gorose:"name"`
 	Age  int    `gorose:"age"`
 }
-// Set the table name. If not, use struct's name by default
+// 实体对应数据库表名
 func (u *Users) TableName() string {
 	return "users"
 }
 ```
-Native query operation
+原生sql查询:
 ```go
 // Here is the structure object to be bound
 // If you don't define a structure, you can use map, map example directly
@@ -164,15 +144,14 @@ fmt.Println(err)
 fmt.Println(u)
 fmt.Println(session.LastSql())
 ```
-Native inesrt delete update
+原生sql删改查:
 ```go
 session.Execute("insert into users(name,age) values(?,?)(?,?)", "gorose",18,"fizzday",19)
 session.Execute("update users set name=? where uid=?","gorose",1)
 session.Execute("delete from users where uid=?", 1)
 ```
-## Object Relational Mapping, the Use of ORM  
 
-- 1. Basic Chain Usage  
+- 1. 基本使用方法  
 
 ```go
 var u Users
@@ -181,7 +160,7 @@ err := db.Table(&u).Fields("name").AddFields("uid","age").Distinct().Where("uid"
 	Group("age").Having("age>1").OrderBy("uid desc").Limit(10).Offset(1).Select()
 ```
 
-- 2. If you don't want to define struct and want to bind map results of a specified type, you can define map types, such as
+- 2. 使用map
 ```go
 type user gorose.Map
 // Or the following type definitions can be parsed properly
@@ -191,26 +170,13 @@ type users4 []map[string]string
 type users5 []gorose.Map
 type users6 []gorose.Data
 ```
-Start using map binding
+- 3、定义实体
 ```go
 db.Table(&user).Select()
 db.Table(&users4).Limit(5).Select()
 ```
-> Note: If the slice data structure is not used, only one piece of data can be obtained.  
 
----
-The gorose. Data used here is actually the `map [string] interface {}'type.
-
-And `gorose. Map'is actually a `t. MapString' type. Here comes a `t'package, a golang basic data type conversion package. See http://github.com/gohouse/t for more details.  
-
-
-- 3. laravel's `First()`,`Get()`, Used to return the result set   
-That is to say, you can even pass in the table name directly without passing in various bound structs and maps, and return two parameters, one is the `[] gorose. Map `result set, and the second is `error', which is considered simple and rude.
-
-Usage is to replace the `Select ()'method above with Get, First, but `Select ()' returns only one parameter.
-
-
-- 4. orm Select Update Insert Delete  
+- 4. 删除改查 
 ```go
 db.Table(&user2).Limit(10.Select()
 db.Table(&user2).Where("uid", 1).Data(gorose.Data{"name","gorose"}).Update()
@@ -219,34 +185,7 @@ db.Table(&user2).Data([]gorose.Data{{"name","gorose33"},"name","gorose44"}).Inse
 db.Table(&user2).Where("uid", 1).Delete()
 ```
 
-## Final SQL constructor, builder constructs SQL of different databases
-Currently supports mysql, sqlite3, postgres, oracle, mssql, Clickhouse and other database drivers that conform to `database/sql` interface support  
-In this part, users are basically insensitive, sorted out, mainly for developers can freely add and modify related drivers to achieve personalized needs.  
-
-## binder, Data Binding Objects  
-This part is also user-insensitive, mainly for incoming binding object parsing and data binding, and also for personalized customization by developers.  
-
-## Modularization
-Gorose 2.0 is fully modular, each module encapsulates the interface api, calling between modules, through the interface, the upper layer depends on the lower layer
-
-- Main module  
-    - engin  
-    gorose Initialize the configuration module, which can be saved and reused globally  
-    - session  
-    Really operate the database underlying module, all operations, will eventually come here to obtain or modify data.   
-    - orm  
-    Object relational mapping module, all ORM operations, are done here    
-    - builder  
-    Building the ultimate execution SQL module, you can build any database sql, but to comply with the `database / SQL ` package interface  
-- sub module  
-    - driver  
-    The database driver module, which is dependent on engin and builder, does things according to the driver    
-    - binder  
-    Result Set Binding Module, where all returned result sets are located   
-
-The above main modules are relatively independent and can be customized and replaced individually, as long as the interface of the corresponding modules is realized.    
-
-## Best Practices
+## 共享连接池
 sql
 ```sql
 DROP TABLE IF EXISTS "users";
@@ -266,7 +205,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/gohouse/gorose"
+	"github.com/x-goe/gorose"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -329,7 +268,7 @@ func main() {
 }
 ```
 
-## Advanced Usage
+## 基本使用
 
 - Chunk Data Fragmentation, Mass Data Batch Processing (Cumulative Processing)  
 
@@ -370,49 +309,89 @@ func main() {
 	    // here run update / delete  
 	})
 	```
+ 
+## 发布版本
+- v1.0.x:
+    由gohouse/gorose 改版发布
+
+## 更新说明
+### 由 github.com/gohouse/gorose/v2 改版升级为github.com/x-goe/gorose v1.0.0
+- db.Table("tablename") 时自动清空where条件及join关联，在同一会话中不需要主动调用db.ResetWhere或db.Reset()方法
+- db.Where() 传入nil或宽数组时自动忽略该条件
+- db.Where() 可以传入0到3个参数，支持如下形式：
+    * 1、简单条件
+    ```
+    // 1个参数
+    db.Where([][]interface{}{"name", "like", "张三%"})
+    // sql:
+    // where name like '张三%'
     
-- where nested  
-
-	```go
-	// SELECT  * FROM users  
-	//     WHERE  id > 1 
-	//         and ( name = 'fizz' 
-	//             or ( name = 'fizz2' 
-	//                 and ( name = 'fizz3' or website like 'fizzday%')
-	//                 )
-	//             ) 
-	//     and job = 'it' LIMIT 1
-	User := db.Table("users")
-	User.Where("id", ">", 1).Where(func() {
-	        User.Where("name", "fizz").OrWhere(func() {
-	            User.Where("name", "fizz2").Where(func() {
-	                User.Where("name", "fizz3").OrWhere("website", "like", "fizzday%")
-	            })
-	        })
-	    }).Where("job", "it").First()
-	```
-
-## realease log
-- v2.1.x: 
-    * update join with auto table prefix  
-    * add query return with []map[string]interface{}  
-- v2.0.0: new version, new structure  
-
-## Upgrade Guide
-### from 2.0.x to 2.1.x  
-- change `xxx.Join("pre_tablename")` into `xxx.Join("tablename")`,the join table name auto prefix  
-- change `err:=DB().Bind().Query()` into `res,err:=DB().Query()` with multi return,leave the `Bind()` method as well  
-### from 1.x to 2.x, install it for new  
-
------
-## pay me a coffee
-wechat|alipay|[paypal: click](https://www.paypal.me/fizzday)
----|---|---
-<img src="imgs/wechat.png" width="300">|<img src="imgs/alipay.png" width="300"> | <a href="https://www.paypal.me/fizzday"><img src="imgs/paypal.png" width="300"></a> 
-
-- pay list  
-
-total | avator 
----|---
-￥100 | [![](https://avatars1.githubusercontent.com/u/53846155?s=96&v=4)](https://github.com/sanjinhub)  
-
+    db.Where([]interface{}{map[string]interface{}{"name":["like", "张三%"]}）
+    // where name like '张三%'
+    
+    // 2个参数
+    db.Where("name", "张三")
+    // sql:
+    // where name = '张三'
+    
+    db.Where("name", []interface{}{"like", "张三%"})
+    // sql:
+    // where name like '张三%'
+    
+    // 3个参数
+    db.Where("name", "like", "张三%")
+    // sql:
+    // where name like '张三%'
+    
+    ```
+    * 2、复杂条件
+    
+    ```
+    // and 和 or 混合
+    // json:
+    `
+    [
+        ["age", ">", 30],
+        ["weight", "between", [45,80]],
+        ["name", "like", "张%"],
+        ["sex", "in", [1,2]],
+        ["$or",
+            [
+                ["audit", 1],
+                ["status", 2]
+            ]
+        ]
+    ]
+    `
+    // golang:
+    
+    where := []interface{}{
+        []interface{}{"age", ">", 30 },
+        []interface{}{"weight", "between", []int{45, 80} },
+        []interface{}{"name", "like", "张%"},
+        []interface{}{"sex", "in", []int{1,2}},
+        []interface{}{"$or",
+            []interface{}{
+                []interface{}{"audit", 1},
+                []interface{}{"status", ">", 2 },
+            },
+    }
+    
+    db.Where([]interface{}{
+        []interface{}{"age", ">", 30 },
+        []interface{}{"weight", "between", [45, 80] },
+        []interface{}{"name", "like", "张%"},
+        []interface{}{"sex", "in", [1,2]},
+        []interface{}{"$or",
+            []interface{}{
+                []interface{}{"audit", 1},
+                []interface{}{"status", ">", 2 },
+            },
+        }
+    })
+    
+    // sql:
+    // where age > 30 and weight between (45 and 80) and name like '张%'
+    //      and sex in(1,2) and (audit = 1 or status > 2)
+        
+    ``` 

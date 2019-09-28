@@ -87,6 +87,7 @@ func TestOrm_Get2(t *testing.T) {
 
 func TestOrm_Get(t *testing.T) {
 	orm := DB()
+	var aValue = "3"
 
 	var u = UsersMap{}
 	ormObj := orm.Table(&u).Join("b", "a.id", "=", "b.id").
@@ -100,7 +101,7 @@ func TestOrm_Get(t *testing.T) {
 		OrWhereNotIn("ee", []interface{}{1, 2}).
 		WhereBetween("ff", []interface{}{11, 21}).
 		WhereNotBetween("ff", []interface{}{1, 2}).
-		Where("a", "like", "%3%").
+		Where("a", "like", "%" + aValue + "%").
 		OrWhere(func() {
 			orm.Where("c", 3).OrWhere(func() {
 				orm.Where("d", ">", 4)

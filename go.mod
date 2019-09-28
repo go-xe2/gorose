@@ -1,4 +1,4 @@
-module github.com/gohouse/gorose/v2
+module github.com/x-goe/gorose
 
 go 1.12
 

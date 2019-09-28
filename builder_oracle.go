@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/gohouse/gocar/structEngin"
 	"github.com/gohouse/t"
+	"github.com/x-goe/gorose/sqlw"
+
 	//"log"
 	"reflect"
 	"strconv"
@@ -289,93 +291,12 @@ func (b *BuilderOracle) BuildOffset() string {
 func (b *BuilderOracle) parseWhere(ormApi IOrm) (string, error) {
 	// 取出所有where
 	wheres := ormApi.GetWhere()
-	// where解析后存放每一项的容器
-	var where []string
-
-	for _, args := range wheres {
-		// and或者or条件
-		var condition = args[0].(string)
-		// 统计当前数组中有多少个参数
-		params := args[1].([]interface{})
-		paramsLength := len(params)
-
-		switch paramsLength {
-		case 3: // 常规3个参数:  {"id",">",1}
-			res, err := b.parseParams(params, ormApi)
-			if err != nil {
-				return res, err
-			}
-			where = append(where, condition+" "+res)
-
-		case 2: // 常规2个参数:  {"id",1}
-			res, err := b.parseParams(params, ormApi)
-			if err != nil {
-				return res, err
-			}
-			where = append(where, condition+" "+res)
-		case 1: // 二维数组或字符串
-			switch paramReal := params[0].(type) {
-			case string:
-				where = append(where, condition+" ("+paramReal+")")
-			case map[string]interface{}: // 一维数组
-				var whereArr []string
-				for key, val := range paramReal {
-					whereArr = append(whereArr, key+"="+b.GetPlaceholder())
-					b.IOrm.SetBindValues(val)
-				}
-				where = append(where, condition+" ("+strings.Join(whereArr, " and ")+")")
-			case [][]interface{}: // 二维数组
-				var whereMore []string
-				for _, arr := range paramReal { // {{"a", 1}, {"id", ">", 1}}
-					whereMoreLength := len(arr)
-					switch whereMoreLength {
-					case 3:
-						res, err := b.parseParams(arr, ormApi)
-						if err != nil {
-							return res, err
-						}
-						whereMore = append(whereMore, res)
-					case 2:
-						res, err := b.parseParams(arr, ormApi)
-						if err != nil {
-							return res, err
-						}
-						whereMore = append(whereMore, res)
-					default:
-						return "", errors.New("where data format is wrong")
-					}
-				}
-				where = append(where, condition+" ("+strings.Join(whereMore, " and ")+")")
-			case func():
-				// 清空where,给嵌套的where让路,复用这个节点
-				ormApi.SetWhere([][]interface{}{})
-
-				// 执行嵌套where放入Database struct
-				paramReal()
-				// 再解析一遍后来嵌套进去的where
-				wherenested, err := b.parseWhere(ormApi)
-				if err != nil {
-					b.IOrm.GetISession().GetIEngin().GetLogger().Error(err.Error())
-					return "", err
-				}
-				// 嵌套的where放入一个括号内
-				where = append(where, condition+" ("+wherenested+")")
-			default:
-				return "", errors.New("where data format is wrong")
-			}
-		}
+	where, vars := sqlw.BuildWhereSql(b.GetPlaceholder(), wheres)
+	if where == "" {
+		return "", nil
 	}
-
-	// 合并where,去掉左侧的空格,and,or并返回
-	return strings.TrimLeft(
-		strings.TrimLeft(
-			strings.TrimLeft(
-				strings.Trim(
-					strings.Join(where, " "),
-					" "),
-				"and"),
-			"or"),
-		" "), nil
+	b.SetBindValues(vars...)
+	return where, nil
 }
 
 func (b *BuilderOracle) parseParams(args []interface{}, ormApi IOrm) (s string, err error) {

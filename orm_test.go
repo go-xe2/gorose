@@ -53,11 +53,7 @@ func TestOrm_BuildSql_where(t *testing.T) {
 	}
 
 	var db = DB()
-	a, b, err := db.Table(&u).Where([][]interface{}{{"age", "<>", 1}, {"age", "in", []int{0,1,2}}}).Limit(10).BuildSql()//.Where(func() {
-		//db.Where([][]interface{}{{"name", "like", "%fizz%"}}) //.OrWhere(func() {
-		//	db.Where("age", ">", 10).Where("uid", ">", 2)
-		//})
-	//}).Limit(10).BuildSql()
+	a, b, err := db.Table(&u).Where([][]interface{}{{"age", "<>", 1}, {"age", "in", []int{0,1,2}}}).Limit(10).BuildSql()
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -73,11 +69,7 @@ func TestOrm_BuildSql_where(t *testing.T) {
 					O{"name": A{"like", "李%"}},
 				},
 			},
-		}).Limit(10).BuildSql()//.Where(func() {
-	//db.Where([][]interface{}{{"name", "like", "%fizz%"}}) //.OrWhere(func() {
-	//	db.Where("age", ">", 10).Where("uid", ">", 2)
-	//})
-	//}).Limit(10).BuildSql()
+		}).Limit(10).BuildSql()
 	if err != nil {
 		t.Error(err.Error())
 	}

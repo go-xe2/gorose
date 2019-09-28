@@ -1,11 +1,11 @@
 package gorose
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gohouse/gocar/structEngin"
 	"github.com/gohouse/t"
+	"github.com/x-goe/gorose/sqlw"
 	"reflect"
 	"strconv"
 	"strings"
@@ -334,7 +334,7 @@ func (b *BuilderDefault) BuildJoin() (s string, err error) {
 
 func (b *BuilderDefault) BuildWhere() (where string, err error) {
 	var beforeParseWhere = b.IOrm.GetWhere()
-	where, err = b.parseWhere2(b.IOrm)
+	where, err = b.parseWhere(b.IOrm)
 	b.IOrm.SetWhere(beforeParseWhere)
 	return If(where == "", "", " WHERE "+where).(string), err
 }
@@ -529,216 +529,16 @@ func (b *BuilderDefault) parseMapWhere(condition string, wheres map[string]inter
 	return "", nil
 }
 
-func (b *BuilderDefault) parseWhere2(ormApi IOrm) (string, error) {
-	wheres := ormApi.GetWhere()
-
-	jsonByte, _ := json.Marshal(wheres)
-	fmt.Printf("=====>>>>>>>wheres:%v\n", string(jsonByte))
-	return "", nil
-	if wheres == nil {
-		return "", nil
-	}
-
-	var where []string
-
-	for _, args := range wheres {
-		// sql: age > 1 and money > 10 and (name = "3232" or name like "sss%") and status = 1 and type in(2,3) and classid not in(12,33)
-		// slice:
-		// [ "$and":
-		// 		[
-		// 			{"age": [">", 1]},
-		// 			{"money": [">", 10]},
-		// 			{"$or":
-		// 				[
-		// 					{"name": "3232"},
-		// 					{"name": ["like", "sss"]}
-		// 				]
-		// 			},
-		//			{"$string": "status = 1"},
-		//			"status = 1",
-		//			{"type": ["in": [2,3]]}
-		//			{"classid": ["in": [12,33]]}
-		// 		]
-		// ]
-		// struct:
-		// [
-		// 		"$and": {
-		// 			"age": [">", 1],
-		//			"money": [">", 10],
-		//			"$or": [
-		//						{ "name": "3232" },
-		//						{ "name": ["$like", "sss%"] },
-		//				   ]
-		//			"$string": "status = 1",
-		//			"type": ["$in": [2,3]] ,
-		//			"classid": ["$not_in": [12,33]
-		// 		}
-		// ]
-		var condition 	= args[0].(string)
-		var params 		= args[1]
-		switch value := params.(type) {
-		case string:
-			where = append(where, value)
-			break
-		case []interface{}:
-			arrLen := len(value)
-			if arrLen == 1 {
-				// {}
-				switch testValue := value[0].(type) {
-				case string:
-					where = append(where, testValue)
-					break
-				case []interface{}:
-					s, err := b.parseSliceWhere(condition, testValue)
-					if err != nil {
-						return "", err
-					}
-					where = append(where, "(" + s + ")")
-					break
-				case map[string]interface{}:
-					s, err := b.parseMapWhere(condition, testValue)
-					if err != nil {
-						return "", err
-					}
-					where = append(where, "(" + s + ")")
-					break
-				}
-			}
-			if arrLen == 2 {
-				// [ "name", "张三" ]
-				// [ "$and" :[ ["sex", 1], ["age", ">", 3]] ]
-
-			}
-			if arrLen == 3 {
-				// { "name", "like", "dd" }
-			}
-			s, err := b.parseSliceWhere(condition, value)
-			if err != nil {
-				return "", err
-			}
-			where = append(where, "(" + s + ")")
-			break
-		case map[string]interface{}:
-			s, err := b.parseMapWhere(condition, value)
-			if err != nil {
-				return "", err
-			}
-			where = append(where, "(" + s + ")")
-			break
-		}
-	}
-	return strings.Join(where," and "), nil
-}
-
 // parseWhere : parse where condition
 func (b *BuilderDefault) parseWhere(ormApi IOrm) (string, error) {
 	// 取出所有where
 	wheres := ormApi.GetWhere()
-	bytes, err := json.Marshal(wheres)
-	if err != nil {
-		return "", err
+	where, vars := sqlw.BuildWhereSql(b.GetPlaceholder(), wheres)
+	if where == "" {
+		return "", nil
 	}
-	fmt.Printf("wheres:%s\n", string(bytes))
-
-	// where解析后存放每一项的容器
-	var where []string
-
-	for _, args := range wheres {
-		// and或者or条件
-		var condition = args[0].(string)
-		// 统计当前数组中有多少个参数
-		params := args[1].([]interface{})
-		paramsLength := len(params)
-
-		switch paramsLength {
-		case 3: // 常规3个参数:  {"id",">",1}
-			res, err := b.parseParams(params, ormApi)
-			if err != nil {
-				return res, err
-			}
-			where = append(where, condition+" "+res)
-
-		case 2: // 常规2个参数:  {"id",1}
-			res, err := b.parseParams(params, ormApi)
-			if err != nil {
-				return res, err
-			}
-			where = append(where, condition+" "+res)
-		case 1: // 二维数组或字符串
-			switch paramReal := params[0].(type) {
-			case string:
-				if paramReal == "" {
-					continue
-				}
-				where = append(where, condition+" ("+paramReal+")")
-			case map[string]interface{}: // 一维数组
-				var whereArr []string
-				for key, val := range paramReal {
-					whereArr = append(whereArr, key+"="+b.GetPlaceholder())
-					b.IOrm.SetBindValues(val)
-				}
-				if len(whereArr) == 0 {
-					continue
-				}
-				where = append(where, condition+" ("+strings.Join(whereArr, " and ")+")")
-			case [][]interface{}: // 二维数组
-				var whereMore []string
-				for _, arr := range paramReal { // {{"a", 1}, {"id", ">", 1}}
-					whereMoreLength := len(arr)
-					switch whereMoreLength {
-					case 3:
-						res, err := b.parseParams(arr, ormApi)
-						if err != nil {
-							return res, err
-						}
-						whereMore = append(whereMore, res)
-					case 2:
-						res, err := b.parseParams(arr, ormApi)
-						if err != nil {
-							return res, err
-						}
-						whereMore = append(whereMore, res)
-					default:
-						return "", errors.New("where data format is wrong")
-					}
-				}
-				if len(whereMore) == 0 {
-					continue
-				}
-				where = append(where, condition+" ("+strings.Join(whereMore, " and ")+")")
-			case func():
-				// 清空where,给嵌套的where让路,复用这个节点
-				ormApi.SetWhere([][]interface{}{})
-
-				// 执行嵌套where放入Database struct
-				paramReal()
-				// 再解析一遍后来嵌套进去的where
-				wherenested, err := b.parseWhere(ormApi)
-				if err != nil {
-					b.IOrm.GetISession().GetIEngin().GetLogger().Error(err.Error())
-					return "", err
-				}
-				if wherenested == "" {
-					continue
-				}
-				// 嵌套的where放入一个括号内
-				where = append(where, condition+" ("+wherenested+")")
-			default:
-				return "", errors.New("where data format is wrong")
-			}
-		}
-	}
-
-	// 合并where,去掉左侧的空格,and,or并返回
-	return strings.TrimLeft(
-		strings.TrimLeft(
-			strings.TrimLeft(
-				strings.Trim(
-					strings.Join(where, " "),
-					" "),
-				"and"),
-			"or"),
-		" "), nil
+	b.SetBindValues(vars...)
+	return where, nil
 }
 
 /**
