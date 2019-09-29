@@ -69,6 +69,7 @@ func (dba *Orm) Table(tab interface{}) IOrm {
 	// 重新查询时，应该清除原条件
 	dba.ResetWhere()
 	dba.join = [][]interface{}{}
+	dba.bindValues = []interface{}{}
 	//dba.table = dba.GetISession().GetTableName()
 	return dba
 }
