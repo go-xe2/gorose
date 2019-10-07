@@ -24,8 +24,8 @@ type IOrm interface {
 	Limit(limit int) IOrm
 	Offset(offset int) IOrm
 	Page(page int) IOrm
-	// join(=innerJoin),leftJoin,rightJoin,crossJoin
-	Join(args ...interface{}) IOrm
+	// joinType: inner,left,right,cross
+	Join(joinType string, args ...interface{}) IOrm
 	LeftJoin(args ...interface{}) IOrm
 	RightJoin(args ...interface{}) IOrm
 	CrossJoin(args ...interface{}) IOrm

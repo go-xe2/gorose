@@ -220,10 +220,11 @@ func (dba *Orm) OrWhereNotBetween(needle string, hystack []interface{}) IOrm {
 }
 
 // Join : select join query
-func (dba *Orm) Join(args ...interface{}) IOrm {
-	dba._joinBuilder("inner", args)
+func (dba *Orm) Join(joinType string, args ...interface{}) IOrm {
+	dba._joinBuilder(joinType, args)
 	return dba
 }
+
 func (dba *Orm) LeftJoin(args ...interface{}) IOrm {
 	dba._joinBuilder("left", args)
 	return dba
